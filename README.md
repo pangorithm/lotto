@@ -77,7 +77,7 @@ podman compose -p lotto-daemon exec -T daemon /usr/local/bin/lottery-daemon stat
 podman compose -p lotto-daemon logs --tail=30 daemon
 ```
 
-- 컨테이너는 첫 시작에 이미지에 포함된 스냅샷을 `state` 볼륨으로 복사하고 운영 스키마 v5를 적용한다. 이후에는 기존 볼륨을 재사용하고, 이전 운영 스키마도 시작 시 마이그레이션한다. 리포지터리의 `lottery.sqlite3`는 덮어쓰지 않는다. 운영 DB 경로는 `/var/lib/lottery/lottery.sqlite3`다. `podman compose -p lotto-daemon down`은 볼륨을 유지하며, `down -v`는 운영 기록까지 삭제한다.
+- 컨테이너는 첫 시작에 이미지에 포함된 스냅샷을 `state` 볼륨으로 복사하고 운영 스키마 v6를 적용한다. 이후에는 기존 볼륨을 재사용하고, 이전 운영 스키마도 시작 시 마이그레이션한다. 리포지터리의 `lottery.sqlite3`는 덮어쓰지 않는다. 운영 DB 경로는 `/var/lib/lottery/lottery.sqlite3`다. `podman compose -p lotto-daemon down`은 볼륨을 유지하며, `down -v`는 운영 기록까지 삭제한다.
 - 기본 설정은 시작 즉시, 그리고 각 확인이 끝난 뒤 900초마다 동행복권을 확인한다(`LOTTERY_INTERVAL_SECONDS`로 변경 가능). 로또 6/45·연금복권720+의 공개된 최신 회차까지만 누락분을 연속해서 저장한다. 판매가 끝난 520은 보존만 한다. 두 상품은 독립적으로 처리되며 응답 오류는 다음 폴링에서 재시도한다. 720+의 당첨 게임 수는 이 수집 경로의 범위에 포함되지 않는다.
 - `model_prediction`에는 과거 결과에서 만든 실험 예측(`recent-bias-v1`)을 상품·회차별로 **서로 다른 조합 5개** 저장한다. 예측은 직전 최대 104회(최소 26회)의 빈도에서 공정 기준 90%, 관측 빈도 10%를 섞어 로또 번호, 720+의 조와 각 자리를 평가한다. 기존 무작위 기록은 DB에 보존하지만 새로 생성하거나 출력하지 않는다. 다음 추첨일은 마지막 추첨일에 7일을 더해 계산하고 대상 추첨일 자정(KST)부터는 사후 생성을 막는다. 번호 구매 기능은 없다.
 - `status`는 최신 저장 회차와 저장된 예측이 있을 때 `model_candidate.tickets`를 순위순으로 출력한다. `once`는 한 차례 실행하고 오류가 있으면 비정상 종료한다. 실행 중인 데몬과 별개로 수동 확인이 필요하다면 먼저 데몬을 멈추거나 다른 Compose 프로젝트명을 사용한다. [시간순 백테스트](research/forecast-backtest.md)에서 두 상품 모두 실험 모델의 예측 우위가 확인되지 않았다.
@@ -88,6 +88,17 @@ podman compose -p lotto-daemon-test -f compose.test.yaml run --rm test
 ```
 
 테스트는 로컬 HTTP 응답과 임시 SQLite를 사용한다. 운영 볼륨과 외부 복권 사이트는 테스트 중에 사용하지 않는다.
+
+### 1등 완전 일치 실험
+
+`jackpot-joint-v2`는 하위 등위가 아닌 **1등 전체 조합**에 확률을 부여해 상위 다섯 개를 구한다. 로또는 본번호 집합과 연속 번호 쌍, 720+는 조와 인접 자리의 조건부 분포를 사용한다. [전 회차 검증 결과](research/jackpot-objective.md)에서 1등 적중 향상이 확인되지 않아 기본값은 `recent-bias-v1`이다.
+
+```sh
+# 원본 DB 읽기만 수행. 데몬이나 실제 알림을 실행하지 않는다.
+cargo run --release --locked -- --db lottery.sqlite3 jackpot-eval
+```
+
+운영에서 전향적으로 실험하려면 **새 이미지를 사용하고** 기존 Compose 실행 명령에 환경 변수 `LOTTERY_STRATEGY=jackpot-joint-v2`를 설정한다. 두 알고리즘을 합쳐 10개를 내지 않는다. 이미 저장된 회차의 다섯 조합과 알고리즘 표시는 유지되며, 아직 예측을 저장하지 않은 회차부터 설정한 전략을 사용한다. 업그레이드 전에는 운영 볼륨을 백업한다.
 
 ### 슬랙 결과 알림
 
