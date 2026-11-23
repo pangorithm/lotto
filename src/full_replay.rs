@@ -42,6 +42,11 @@ async fn all_active_rounds() -> Result<()> {
         let runtime = dir.path().join(format!("{series}.sqlite3"));
         seed_first_round(&runtime, archive_uri, game)?;
         let mut service = Service {
+            strategy: match std::env::var("LOTTERY_REPLAY_STRATEGY") {
+                Ok(name) => crate::jackpot::Strategy::from_name(&name)?,
+                Err(std::env::VarError::NotPresent) => crate::jackpot::Strategy::Recent,
+                Err(error) => return Err(error.into()),
+            },
             store: Store::open(&runtime, &dir.path().join("unused-seed.sqlite3"))?,
             collector: Collector::new(feed.url().clone())?,
             slack: Some(Slack::new(&webhook)?),

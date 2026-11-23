@@ -166,8 +166,12 @@ fn message(notice: &Notice) -> String {
         text.push_str("다음 예측 없음\n");
     } else {
         text.push_str(&format!(
-            "다음 {}회 예측 (recent-bias-v1 실험):\n",
-            notice.head.round.saturating_add(1)
+            "다음 {}회 예측 ({} 실험):\n",
+            notice.head.round.saturating_add(1),
+            notice
+                .model_next_algorithm
+                .as_deref()
+                .unwrap_or("알 수 없음")
         ));
         for (i, ticket) in notice.model_next.iter().enumerate() {
             text.push_str(&format!("{}. {}\n", i + 1, ticket_text(ticket)));

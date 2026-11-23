@@ -188,6 +188,7 @@ async fn forecasts_precede_publication_and_notices_survive_restart() -> Result<(
     fs::write(&webhook, url.as_str())?;
     let start = || -> Result<Service> {
         Ok(Service {
+            strategy: crate::jackpot::Strategy::Recent,
             store: Store::open(&runtime, &seed)?,
             collector: Collector::new(feed.url().clone())?,
             slack: Some(Slack::new(&webhook)?),

@@ -13,7 +13,7 @@ impl Store {
         let pending = tx
             .query_row(
                 "SELECT d.round_no, d.draw_date, model_prior.ticket_json, model_prior.alternatives_json,
-                        model_next.ticket_json, model_next.alternatives_json
+                        model_next.ticket_json, model_next.alternatives_json, model_next.algorithm
              FROM notice_outbox AS o
              JOIN draw AS d USING (series_code, round_no)
              LEFT JOIN model_prediction AS model_prior ON model_prior.series_code = o.series_code
@@ -31,11 +31,12 @@ impl Store {
                             (row.get(2)?, row.get(3)?),
                             (row.get(4)?, row.get(5)?),
                         ],
+                        row.get(6)?,
                     ))
                 },
             )
             .optional()?;
-        let Some((round, date, [model_prior, model_next])) = pending else {
+        let Some((round, date, [model_prior, model_next], model_next_algorithm)) = pending else {
             return Ok(None);
         };
         let head = Head {
@@ -74,6 +75,7 @@ impl Store {
             result,
             model_prior: tickets(model_prior)?,
             model_next: tickets(model_next)?,
+            model_next_algorithm,
         };
         tx.commit()?;
         Ok(Some(notice))
@@ -159,6 +161,7 @@ pub(super) mod tests {
         assert_eq!((numbers, bonus), ([1, 2, 3, 4, 5, 6], 7));
         assert!(notice.model_prior.is_empty());
         assert!(notice.model_next.is_empty());
+        assert!(notice.model_next_algorithm.is_none());
         let sent = |db: &Connection| {
             db.query_row(
                 "SELECT sent_at_utc FROM notice_outbox WHERE series_code = ?1 AND round_no = ?2",

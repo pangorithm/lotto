@@ -7,14 +7,16 @@ use serde_json::{Map, Value, json};
 
 use super::{BATCH_VERSION, MODEL_VERSION, Store, connect, read_head, schema_version};
 use crate::domain::{Candidate, Game, Ticket, seoul_date};
-use crate::forecast::{ALGORITHM, MAX_HISTORY, Model};
+use crate::forecast::MAX_HISTORY;
 use crate::forecast_batch::PICKS;
+use crate::jackpot::Strategy;
 
 impl Store {
-    pub(crate) fn save_model_candidate(
+    pub(crate) fn save_model_candidate_using(
         &mut self,
         candidate: &Candidate,
         now: &impl Fn() -> DateTime<Utc>,
+        algorithm: Strategy,
     ) -> Result<bool> {
         let tx = self
             .db
@@ -31,32 +33,46 @@ impl Store {
             return Ok(false);
         }
         let key = (game.code(), target.round);
-        let stored = tx.query_row(
-            "SELECT ticket_json, target_date, alternatives_json IS NOT NULL FROM model_prediction
-             WHERE series_code = ?1 AND target_round = ?2",
-            key,
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, bool>(2)?)),
-        ).optional()?;
-        let (first_json, deadline) = match stored {
-            Some((_, _, true)) => return Ok(false),
-            Some((first_json, date, false)) => {
+        let stored = tx
+            .query_row(
+                "SELECT ticket_json, target_date, algorithm, alternatives_json IS NOT NULL
+                 FROM model_prediction
+                 WHERE series_code = ?1 AND target_round = ?2",
+                key,
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, bool>(3)?,
+                    ))
+                },
+            )
+            .optional()?;
+        let (first_json, deadline, strategy) = match stored {
+            Some((_, _, _, true)) => return Ok(false),
+            Some((first_json, date, name, false)) => {
                 let stored_date: NaiveDate = date.parse().context("invalid stored target date")?;
                 if stored_date <= latest.date || stored_date <= today {
                     return Ok(false);
                 }
-                (Some(first_json), target.date.min(stored_date))
+                (
+                    Some(first_json),
+                    target.date.min(stored_date),
+                    Strategy::from_name(&name)?,
+                )
             }
-            None => (None, target.date),
+            None => (None, target.date, algorithm),
         };
         let history: Vec<Ticket> = super::read_history(&tx, game, latest.round, MAX_HISTORY)?
             .into_iter()
             .map(|(_, ticket)| ticket)
             .collect();
-        let Some(model) = Model::fit(game, &history)? else {
+        let name = strategy.name();
+        let Some(picks) = strategy.picks(game, &history)? else {
             return Ok(false);
         };
-        let [first, alternatives @ ..]: [Ticket; PICKS] = model
-            .picks()?
+        let [first, alternatives @ ..]: [Ticket; PICKS] = picks
             .try_into()
             .map_err(|_| anyhow!("expected {PICKS} model tickets"))?;
         if deadline <= seoul_date(now())? {
@@ -88,7 +104,7 @@ impl Store {
                     target.date.to_string(),
                     latest.round,
                     candidate.created_at.to_rfc3339_opts(SecondsFormat::AutoSi, true),
-                    ALGORITHM,
+                    name,
                     serde_json::to_string(&first)?,
                     alternatives,
                 ),

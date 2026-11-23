@@ -13,6 +13,9 @@ use crate::domain::{Draw, Game, Head, Record, seoul_date};
 
 #[path = "store_forecast.rs"]
 mod forecast;
+#[cfg(test)]
+#[path = "store_migration_tests.rs"]
+mod migration_tests;
 #[path = "store_notice.rs"]
 mod notice;
 
@@ -23,6 +26,7 @@ const PREDICTION_VERSION: i64 = 2;
 const RUNTIME_VERSION: i64 = 3;
 const MODEL_VERSION: i64 = 4;
 const BATCH_VERSION: i64 = 5;
+const STRATEGY_VERSION: i64 = 6;
 const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub(crate) struct Store {
@@ -127,7 +131,7 @@ fn schema_version(db: &Connection) -> Result<i64> {
         .pragma_query_value(None, "user_version", |row| row.get(0))
         .context("read database user_version")?;
     ensure!(
-        (ARCHIVE_VERSION..=BATCH_VERSION).contains(&version),
+        (ARCHIVE_VERSION..=STRATEGY_VERSION).contains(&version),
         "unsupported database user_version {version}"
     );
     Ok(version)
@@ -141,6 +145,7 @@ fn migrate(db: &mut Connection) -> Result<()> {
         (RUNTIME_VERSION, include_str!("store_v3.sql")),
         (MODEL_VERSION, include_str!("store_v4.sql")),
         (BATCH_VERSION, include_str!("store_v5.sql")),
+        (STRATEGY_VERSION, include_str!("store_v6.sql")),
     ] {
         if version < minimum {
             tx.execute_batch(migration)?;

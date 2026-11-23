@@ -5,6 +5,10 @@ mod forecast;
 mod forecast_batch;
 #[cfg(test)]
 mod full_replay;
+mod jackpot;
+mod jackpot_eval;
+mod jackpot_lotto;
+mod jackpot_pension;
 #[cfg(test)]
 mod replay;
 #[cfg(test)]
@@ -53,6 +57,14 @@ struct Args {
     base_url: Url,
     #[arg(long, global = true, env = "LOTTERY_SLACK_WEBHOOK_FILE")]
     slack_webhook_file: Option<PathBuf>,
+    #[arg(
+        long,
+        value_enum,
+        global = true,
+        env = "LOTTERY_STRATEGY",
+        default_value = "recent-bias-v1"
+    )]
+    strategy: jackpot::Strategy,
     #[command(subcommand)]
     command: Command,
 }
@@ -75,6 +87,8 @@ enum Command {
     Status,
     #[command(about = "Backtest sequential predictions against a read-only historical database")]
     Backtest,
+    #[command(about = "Compare top-five first-prize forecasts on the entire read-only archive")]
+    JackpotEval,
 }
 
 #[tokio::main]
@@ -96,6 +110,10 @@ async fn main() -> Result<()> {
             serde_json::to_writer_pretty(io::stdout().lock(), &backtest::run(&args.db)?)?;
             return Ok(());
         }
+        Command::JackpotEval => {
+            serde_json::to_writer_pretty(io::stdout().lock(), &jackpot_eval::run(&args.db)?)?;
+            return Ok(());
+        }
         Command::Run { .. } | Command::Once => {}
     }
     let collector = Collector::new(args.base_url)?;
@@ -111,6 +129,7 @@ async fn main() -> Result<()> {
         store,
         collector,
         slack,
+        strategy: args.strategy,
     };
     match args.command {
         Command::Once => service.poll().await,
@@ -128,7 +147,7 @@ async fn main() -> Result<()> {
                 }
             }
         }
-        Command::Status | Command::Backtest => Ok(()),
+        Command::Status | Command::Backtest | Command::JackpotEval => Ok(()),
     }
 }
 

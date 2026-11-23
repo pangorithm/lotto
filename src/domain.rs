@@ -111,6 +111,7 @@ pub(crate) struct Notice {
     pub(crate) result: NoticeResult,
     pub(crate) model_prior: Vec<Ticket>,
     pub(crate) model_next: Vec<Ticket>,
+    pub(crate) model_next_algorithm: Option<String>,
 }
 
 #[derive(Debug)]

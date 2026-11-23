@@ -13,6 +13,7 @@ pub(crate) struct Service {
     pub(crate) store: Store,
     pub(crate) collector: Collector,
     pub(crate) slack: Option<Slack>,
+    pub(crate) strategy: crate::jackpot::Strategy,
 }
 
 impl Service {
@@ -107,7 +108,10 @@ impl Service {
         }
         ensure!(local == remote, "latest and stored draw dates disagree");
         if let Some(candidate) = candidate(game, local, now())? {
-            if block_in_place(|| self.store.save_model_candidate(&candidate, now))? {
+            if block_in_place(|| {
+                self.store
+                    .save_model_candidate_using(&candidate, now, self.strategy)
+            })? {
                 tracing::info!(
                     game = game.code(),
                     round = candidate.target.round,

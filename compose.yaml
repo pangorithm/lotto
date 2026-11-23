@@ -9,6 +9,7 @@ services:
       LOTTERY_SEED: /opt/lottery/seed.sqlite3
       LOTTERY_BASE_URL: ${LOTTERY_BASE_URL:-https://www.dhlottery.co.kr/}
       LOTTERY_INTERVAL_SECONDS: ${LOTTERY_INTERVAL_SECONDS:-900}
+      LOTTERY_STRATEGY: ${LOTTERY_STRATEGY:-recent-bias-v1}
       RUST_LOG: ${RUST_LOG:-info}
     volumes:
       - state:/var/lib/lottery:U
