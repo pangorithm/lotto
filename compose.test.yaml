@@ -1,0 +1,7 @@
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Containerfile
+      target: test
+    image: localhost/lottery-daemon-tests:local

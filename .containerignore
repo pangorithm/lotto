@@ -1,0 +1,10 @@
+*
+!Cargo.toml
+!Cargo.lock
+!src/
+!src/**
+!schema.sql
+!tests/
+!tests/**
+!lottery.sqlite3
+!Containerfile
