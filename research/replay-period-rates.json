@@ -1,0 +1,693 @@
+{
+  "source_sha256": "5dda58c213a6a97a24aa9ff2242c33ed08045d7e902a86837a6f628dd0198910",
+  "boundary_view": "dated",
+  "series": {
+    "lotto645": {
+      "model": "recent-bias-v1",
+      "overall": {
+        "draws": 1251,
+        "warmup": 26,
+        "scored": 1225,
+        "tickets": 6125,
+        "winning_draws": 69,
+        "winning_tickets": 140,
+        "draw_hit_pct": 5.63,
+        "ticket_hit_pct": 2.29,
+        "draw_wilson95_pct": [
+          4.47,
+          7.07
+        ],
+        "tickets_by_best_prize": {
+          "4": 5,
+          "5": 135,
+          "miss": 5985
+        }
+      },
+      "periods": [
+        {
+          "start": 1,
+          "end": 9,
+          "start_date": "2002-12-07",
+          "end_date": "2003-02-01",
+          "events": [
+            [
+              "lotto_inception",
+              "국민은행 운영으로 로또 6/45 개시",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 9,
+          "warmup": 9,
+          "scored": 0,
+          "tickets": 0,
+          "winning_draws": 0,
+          "winning_tickets": 0,
+          "draw_hit_pct": null,
+          "ticket_hit_pct": null,
+          "draw_wilson95_pct": null,
+          "tickets_by_best_prize": {}
+        },
+        {
+          "start": 10,
+          "end": 87,
+          "start_date": "2003-02-08",
+          "end_date": "2004-07-31",
+          "events": [
+            [
+              "lotto_live_10",
+              "SBS 제10회 생방송 예고",
+              "confirmed",
+              "observed_in"
+            ]
+          ],
+          "draws": 78,
+          "warmup": 17,
+          "scored": 61,
+          "tickets": 305,
+          "winning_draws": 6,
+          "winning_tickets": 12,
+          "draw_hit_pct": 9.84,
+          "ticket_hit_pct": 3.93,
+          "draw_wilson95_pct": [
+            4.59,
+            19.84
+          ],
+          "tickets_by_best_prize": {
+            "4": 1,
+            "5": 11,
+            "miss": 293
+          }
+        },
+        {
+          "start": 88,
+          "end": 261,
+          "start_date": "2004-08-07",
+          "end_date": "2007-12-01",
+          "events": [
+            [
+              "lotto_1000",
+              "판매가 및 5등 고정 당첨금 인하",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 174,
+          "warmup": 0,
+          "scored": 174,
+          "tickets": 870,
+          "winning_draws": 9,
+          "winning_tickets": 20,
+          "draw_hit_pct": 5.17,
+          "ticket_hit_pct": 2.3,
+          "draw_wilson95_pct": [
+            2.74,
+            9.54
+          ],
+          "tickets_by_best_prize": {
+            "5": 20,
+            "miss": 850
+          }
+        },
+        {
+          "start": 262,
+          "end": 400,
+          "start_date": "2007-12-08",
+          "end_date": "2010-07-31",
+          "events": [
+            [
+              "lotto_nanum",
+              "국민은행에서 나눔로또로 인계",
+              "confirmed",
+              "first_affected"
+            ],
+            [
+              "lotto_venus",
+              "할로겐 회전식에서 비너스 공기혼합식으로 교체",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 139,
+          "warmup": 0,
+          "scored": 139,
+          "tickets": 695,
+          "winning_draws": 8,
+          "winning_tickets": 11,
+          "draw_hit_pct": 5.76,
+          "ticket_hit_pct": 1.58,
+          "draw_wilson95_pct": [
+            2.94,
+            10.95
+          ],
+          "tickets_by_best_prize": {
+            "5": 11,
+            "miss": 684
+          }
+        },
+        {
+          "start": 401,
+          "end": 574,
+          "start_date": "2010-08-07",
+          "end_date": "2013-11-30",
+          "events": [
+            [
+              "lotto_fixed4",
+              "4등 당첨금 5만원 정액제",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 174,
+          "warmup": 0,
+          "scored": 174,
+          "tickets": 870,
+          "winning_draws": 13,
+          "winning_tickets": 35,
+          "draw_hit_pct": 7.47,
+          "ticket_hit_pct": 4.02,
+          "draw_wilson95_pct": [
+            4.42,
+            12.36
+          ],
+          "tickets_by_best_prize": {
+            "4": 2,
+            "5": 33,
+            "miss": 835
+          }
+        },
+        {
+          "start": 575,
+          "end": 732,
+          "start_date": "2013-12-07",
+          "end_date": "2016-12-10",
+          "events": [
+            [
+              "common_nanum3",
+              "나눔로또 제3기 사업 및 통합 수탁",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 158,
+          "warmup": 0,
+          "scored": 158,
+          "tickets": 790,
+          "winning_draws": 10,
+          "winning_tickets": 20,
+          "draw_hit_pct": 6.33,
+          "ticket_hit_pct": 2.53,
+          "draw_wilson95_pct": [
+            3.47,
+            11.26
+          ],
+          "tickets_by_best_prize": {
+            "5": 20,
+            "miss": 770
+          }
+        },
+        {
+          "start": 733,
+          "end": 835,
+          "start_date": "2016-12-17",
+          "end_date": "2018-12-01",
+          "events": [
+            [
+              "lotto_venus_rl2",
+              "비너스 RL2 도입 보도",
+              "reported",
+              "first_affected"
+            ]
+          ],
+          "draws": 103,
+          "warmup": 0,
+          "scored": 103,
+          "tickets": 515,
+          "winning_draws": 3,
+          "winning_tickets": 7,
+          "draw_hit_pct": 2.91,
+          "ticket_hit_pct": 1.36,
+          "draw_wilson95_pct": [
+            1.0,
+            8.22
+          ],
+          "tickets_by_best_prize": {
+            "4": 2,
+            "5": 5,
+            "miss": 508
+          }
+        },
+        {
+          "start": 836,
+          "end": 1100,
+          "start_date": "2018-12-08",
+          "end_date": "2023-12-30",
+          "events": [
+            [
+              "common_dh4",
+              "나눔로또에서 동행복권 제4기로 인계",
+              "confirmed",
+              "first_affected"
+            ],
+            [
+              "lotto_mbc",
+              "로또 SBS에서 MBC로 이동",
+              "confirmed",
+              "first_affected"
+            ],
+            [
+              "lotto_pc",
+              "로또 PC 인터넷 구매 시작",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 265,
+          "warmup": 0,
+          "scored": 265,
+          "tickets": 1325,
+          "winning_draws": 11,
+          "winning_tickets": 17,
+          "draw_hit_pct": 4.15,
+          "ticket_hit_pct": 1.28,
+          "draw_wilson95_pct": [
+            2.33,
+            7.28
+          ],
+          "tickets_by_best_prize": {
+            "5": 17,
+            "miss": 1308
+          }
+        },
+        {
+          "start": 1101,
+          "end": 1210,
+          "start_date": "2024-01-06",
+          "end_date": "2026-02-07",
+          "events": [
+            [
+              "common_dh5",
+              "동행복권 제5기 위탁 개시",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 110,
+          "warmup": 0,
+          "scored": 110,
+          "tickets": 550,
+          "winning_draws": 7,
+          "winning_tickets": 12,
+          "draw_hit_pct": 6.36,
+          "ticket_hit_pct": 2.18,
+          "draw_wilson95_pct": [
+            3.12,
+            12.56
+          ],
+          "tickets_by_best_prize": {
+            "5": 12,
+            "miss": 538
+          }
+        },
+        {
+          "start": 1211,
+          "end": 1251,
+          "start_date": "2026-02-14",
+          "end_date": "2026-11-21",
+          "events": [
+            [
+              "lotto_mobile",
+              "스마트폰 웹 로또 판매 시범 도입",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 41,
+          "warmup": 0,
+          "scored": 41,
+          "tickets": 205,
+          "winning_draws": 2,
+          "winning_tickets": 6,
+          "draw_hit_pct": 4.88,
+          "ticket_hit_pct": 2.93,
+          "draw_wilson95_pct": [
+            1.35,
+            16.14
+          ],
+          "tickets_by_best_prize": {
+            "5": 6,
+            "miss": 199
+          }
+        }
+      ]
+    },
+    "pension520": {
+      "model": "legacy-520-research-only",
+      "overall": {
+        "draws": 461,
+        "warmup": 26,
+        "scored": 435,
+        "tickets": 2175,
+        "winning_draws": 136,
+        "winning_tickets": 450,
+        "draw_hit_pct": 31.26,
+        "ticket_hit_pct": 20.69,
+        "draw_wilson95_pct": [
+          27.09,
+          35.77
+        ],
+        "tickets_by_best_prize": {
+          "5": 1,
+          "6": 23,
+          "7": 426,
+          "miss": 1725
+        }
+      },
+      "periods": [
+        {
+          "start": 1,
+          "end": 26,
+          "start_date": "2011-07-06",
+          "end_date": "2011-12-28",
+          "events": [
+            [
+              "p520_start",
+              "연금복권520 첫 추첨",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 26,
+          "warmup": 26,
+          "scored": 0,
+          "tickets": 0,
+          "winning_draws": 0,
+          "winning_tickets": 0,
+          "draw_hit_pct": null,
+          "ticket_hit_pct": null,
+          "draw_wilson95_pct": null,
+          "tickets_by_best_prize": {}
+        },
+        {
+          "start": 27,
+          "end": 65,
+          "start_date": "2012-01-04",
+          "end_date": "2012-09-26",
+          "events": [
+            [
+              "p520_mbn",
+              "연금복권520 YTN에서 MBN으로 이동",
+              "reported",
+              "first_affected"
+            ]
+          ],
+          "draws": 39,
+          "warmup": 0,
+          "scored": 39,
+          "tickets": 195,
+          "winning_draws": 8,
+          "winning_tickets": 32,
+          "draw_hit_pct": 20.51,
+          "ticket_hit_pct": 16.41,
+          "draw_wilson95_pct": [
+            10.78,
+            35.53
+          ],
+          "tickets_by_best_prize": {
+            "6": 1,
+            "7": 31,
+            "miss": 163
+          }
+        },
+        {
+          "start": 66,
+          "end": 74,
+          "start_date": "2012-10-03",
+          "end_date": "2012-11-28",
+          "events": [
+            [
+              "p520_tier5",
+              "연금복권520 5등 일치 자리 수 변경",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 9,
+          "warmup": 0,
+          "scored": 9,
+          "tickets": 45,
+          "winning_draws": 2,
+          "winning_tickets": 7,
+          "draw_hit_pct": 22.22,
+          "ticket_hit_pct": 15.56,
+          "draw_wilson95_pct": [
+            6.32,
+            54.74
+          ],
+          "tickets_by_best_prize": {
+            "7": 7,
+            "miss": 38
+          }
+        },
+        {
+          "start": 75,
+          "end": 126,
+          "start_date": "2012-12-05",
+          "end_date": "2013-11-27",
+          "events": [
+            [
+              "p520_jtbc",
+              "연금복권520 MBN에서 JTBC로 이동",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 52,
+          "warmup": 0,
+          "scored": 52,
+          "tickets": 260,
+          "winning_draws": 15,
+          "winning_tickets": 60,
+          "draw_hit_pct": 28.85,
+          "ticket_hit_pct": 23.08,
+          "draw_wilson95_pct": [
+            18.33,
+            42.27
+          ],
+          "tickets_by_best_prize": {
+            "6": 1,
+            "7": 59,
+            "miss": 200
+          }
+        },
+        {
+          "start": 127,
+          "end": 239,
+          "start_date": "2013-12-04",
+          "end_date": "2016-01-27",
+          "events": [
+            [
+              "common_nanum3",
+              "나눔로또 제3기 사업 및 통합 수탁",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 113,
+          "warmup": 0,
+          "scored": 113,
+          "tickets": 565,
+          "winning_draws": 41,
+          "winning_tickets": 126,
+          "draw_hit_pct": 36.28,
+          "ticket_hit_pct": 22.3,
+          "draw_wilson95_pct": [
+            28.0,
+            45.46
+          ],
+          "tickets_by_best_prize": {
+            "5": 1,
+            "6": 6,
+            "7": 119,
+            "miss": 439
+          }
+        },
+        {
+          "start": 240,
+          "end": 387,
+          "start_date": "2016-02-03",
+          "end_date": "2018-11-28",
+          "events": [
+            [
+              "p520_sbsplus",
+              "연금복권520 JTBC에서 SBS플러스로 이동",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 148,
+          "warmup": 0,
+          "scored": 148,
+          "tickets": 740,
+          "winning_draws": 45,
+          "winning_tickets": 160,
+          "draw_hit_pct": 30.41,
+          "ticket_hit_pct": 21.62,
+          "draw_wilson95_pct": [
+            23.57,
+            38.23
+          ],
+          "tickets_by_best_prize": {
+            "6": 8,
+            "7": 152,
+            "miss": 580
+          }
+        },
+        {
+          "start": 388,
+          "end": 461,
+          "start_date": "2018-12-05",
+          "end_date": "2020-04-29",
+          "events": [
+            [
+              "common_dh4",
+              "나눔로또에서 동행복권 제4기로 인계",
+              "confirmed",
+              "first_affected"
+            ],
+            [
+              "p520_mbcdrama",
+              "연금복권520 SBS플러스에서 MBC드라마넷으로 이동",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 74,
+          "warmup": 0,
+          "scored": 74,
+          "tickets": 370,
+          "winning_draws": 25,
+          "winning_tickets": 65,
+          "draw_hit_pct": 33.78,
+          "ticket_hit_pct": 17.57,
+          "draw_wilson95_pct": [
+            24.05,
+            45.12
+          ],
+          "tickets_by_best_prize": {
+            "6": 7,
+            "7": 58,
+            "miss": 305
+          }
+        }
+      ]
+    },
+    "pension720": {
+      "model": "recent-bias-v1",
+      "overall": {
+        "draws": 342,
+        "warmup": 26,
+        "scored": 316,
+        "tickets": 1580,
+        "winning_draws": 53,
+        "winning_tickets": 153,
+        "draw_hit_pct": 16.77,
+        "ticket_hit_pct": 9.68,
+        "draw_wilson95_pct": [
+          13.06,
+          21.29
+        ],
+        "tickets_by_best_prize": {
+          "5": 2,
+          "6": 14,
+          "7": 137,
+          "miss": 1427
+        }
+      },
+      "periods": [
+        {
+          "start": 1,
+          "end": 191,
+          "start_date": "2020-05-07",
+          "end_date": "2023-12-28",
+          "events": [
+            [
+              "p720_mbc",
+              "연금복권 지상파 MBC 목요일 추첨",
+              "confirmed",
+              "first_affected"
+            ],
+            [
+              "p720_rules",
+              "연금복권720+ 첫 추첨 및 당첨 구조 개편",
+              "confirmed",
+              "first_affected"
+            ],
+            [
+              "p720_sales",
+              "연금복권720+ 판매 전환",
+              "confirmed",
+              "first_affected"
+            ],
+            [
+              "p720_topaze",
+              "화살·회전판에서 Topaze 추첨기로 전환",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 191,
+          "warmup": 26,
+          "scored": 165,
+          "tickets": 825,
+          "winning_draws": 29,
+          "winning_tickets": 86,
+          "draw_hit_pct": 17.58,
+          "ticket_hit_pct": 10.42,
+          "draw_wilson95_pct": [
+            12.53,
+            24.1
+          ],
+          "tickets_by_best_prize": {
+            "5": 1,
+            "6": 6,
+            "7": 79,
+            "miss": 739
+          }
+        },
+        {
+          "start": 192,
+          "end": 342,
+          "start_date": "2024-01-04",
+          "end_date": "2026-11-19",
+          "events": [
+            [
+              "common_dh5",
+              "동행복권 제5기 위탁 개시",
+              "confirmed",
+              "first_affected"
+            ]
+          ],
+          "draws": 151,
+          "warmup": 0,
+          "scored": 151,
+          "tickets": 755,
+          "winning_draws": 24,
+          "winning_tickets": 67,
+          "draw_hit_pct": 15.89,
+          "ticket_hit_pct": 8.87,
+          "draw_wilson95_pct": [
+            10.92,
+            22.56
+          ],
+          "tickets_by_best_prize": {
+            "5": 1,
+            "6": 8,
+            "7": 58,
+            "miss": 688
+          }
+        }
+      ]
+    }
+  }
+}
