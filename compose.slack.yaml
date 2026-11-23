@@ -1,0 +1,10 @@
+services:
+  daemon:
+    environment:
+      LOTTERY_SLACK_WEBHOOK_FILE: /run/secrets/lotto-daemon-slack
+    secrets:
+      - lotto-daemon-slack
+
+secrets:
+  lotto-daemon-slack:
+    external: true
