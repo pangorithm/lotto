@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use chrono::{NaiveDate, TimeDelta};
+use chrono::{NaiveDate, TimeDelta, Utc};
 use rusqlite::Connection;
 use serde_json::json;
 use tempfile::NamedTempFile;
@@ -103,15 +103,15 @@ fn saves_five_tickets_for_the_current_head_once() -> Result<()> {
         target: draw26.head,
         created_at: CREATED.parse()?,
     };
-    assert!(!store.save_model_candidate(&candidate)?);
+    assert!(!store.save_model_candidate(&candidate, &Utc::now)?);
     assert_eq!(Store::status(path)?, v3_status);
 
     store.apply(game, std::slice::from_ref(&draw26))?;
-    assert!(!store.save_model_candidate(&candidate)?);
+    assert!(!store.save_model_candidate(&candidate, &Utc::now)?);
     let draw27 = lotto_after(draw26.head)?;
     candidate.based_on = draw26.head;
     candidate.target = draw27.head;
-    assert!(store.save_model_candidate(&candidate)?);
+    assert!(store.save_model_candidate(&candidate, &Utc::now)?);
     let status = Store::status(path)?;
     let model = &status[game.code()]["model_candidate"];
     let tickets = model["tickets"]
@@ -125,7 +125,7 @@ fn saves_five_tickets_for_the_current_head_once() -> Result<()> {
     assert_eq!(model["target_date"], json!(candidate.target.date));
     assert_eq!(model["created_at_utc"], CREATED);
     candidate.created_at += TimeDelta::seconds(1);
-    assert!(!store.save_model_candidate(&candidate)?);
+    assert!(!store.save_model_candidate(&candidate, &Utc::now)?);
     assert_eq!(Store::status(path)?, status);
 
     let notice = store.pending_notice(game)?.context("round 26 notice")?;
@@ -167,7 +167,7 @@ fn completes_a_matching_v4_ticket_without_rewriting_it() -> Result<()> {
     assert_eq!(json!(notice.model_next), v4["tickets"]);
 
     candidate.created_at += TimeDelta::seconds(1);
-    assert!(store.save_model_candidate(&candidate)?);
+    assert!(store.save_model_candidate(&candidate, &Utc::now)?);
     let status = Store::status(path)?;
     let model = &status["lotto645"]["model_candidate"];
     assert_eq!(
@@ -180,7 +180,7 @@ fn completes_a_matching_v4_ticket_without_rewriting_it() -> Result<()> {
         row.get(0)
     })?;
     assert_eq!(first, FIRST);
-    assert!(!store.save_model_candidate(&candidate)?);
+    assert!(!store.save_model_candidate(&candidate, &Utc::now)?);
     assert_eq!(Store::status(path)?, status);
     Ok(())
 }
@@ -194,7 +194,7 @@ fn rejects_a_v4_ticket_that_differs_from_the_fresh_first_pick() -> Result<()> {
     let mut store = Store::open(path, &path.with_extension("seed"))?;
     let original = Store::status(path)?;
 
-    let Err(error) = store.save_model_candidate(&candidate) else {
+    let Err(error) = store.save_model_candidate(&candidate, &Utc::now) else {
         anyhow::bail!("first pick must match");
     };
     assert_eq!(
@@ -214,7 +214,7 @@ fn leaves_expired_v4_alternatives_unset_even_with_a_later_requested_date() -> Re
     let mut store = Store::open(path, &path.with_extension("seed"))?;
     candidate.target.date = NaiveDate::from_ymd_opt(2099, 1, 3).context("future target date")?;
 
-    assert!(!store.save_model_candidate(&candidate)?);
+    assert!(!store.save_model_candidate(&candidate, &Utc::now)?);
     let alternatives: Option<String> = db.query_row(
         "SELECT alternatives_json FROM model_prediction",
         [],

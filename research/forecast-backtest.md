@@ -27,3 +27,17 @@ cargo run --locked -- --db lottery.sqlite3 backtest
 ```
 
 명령은 원본 DB를 읽기 전용으로 열고 운영과 같은 모델 코드를 사용한다. JSON의 `snapshot_next_candidates`에 5개가 모두 나온다. 로또는 6개의 주변 출현 점수 합을 최대화하며, 720+는 조·자리의 주변 점수 곱을 사용한다(독립 순위 모형). 가까운 순위의 조합끼리는 번호가 많이 겹칠 수 있고, 다양성을 목적으로 일부러 점수를 낮추지 않는다.
+
+## 발표 순서 리플레이
+
+[리플레이 테스트](../src/replay.rs)는 원본의 상품별 과거 104회만 복사한 임시 시드에서 시작한다(로또 1,243회·720+ 334회까지). 로컬 HTTP 서버가 로또 1,244–1,251회와 720+ 335–342회 결과를 추첨일 순으로 **한 회차씩** 공개한다. 공개 시각은 실제 서버 응답 로그가 아니라 추첨 당일 22:00 KST로 설정한 가상 시각이다. 운영 코드가 공개 전에 저장한 5개가 그대로 남는지, 결과·보너스가 원본과 일치하는지, 다음 예측과 비교 알림이 재시작·반복 조회에도 중복되지 않는지 검사한다.
+
+각 상품 8회×5조합을 대조했다. 로또는 본번호 3개 이상이 일치한 조합이 6개였고, 두 상품 모두 1등 일치는 없었다. 720+ 보너스 완전 일치도 없었다. 이는 **저장·수집·채점 순서**를 재현한 결과다. 5개 예측의 숫자는 서로 겹칠 수 있으며 이미 알려진 8주 기록만으로 모델의 예측 우위나 추첨기 편향을 입증할 수 없다.
+
+```sh
+cargo test --locked --bin lottery-daemon replay:: -- --nocapture
+podman compose -p lotto-replay-test -f compose.test.yaml build test
+podman compose -p lotto-replay-test -f compose.test.yaml run --rm test cargo test --release --locked -- --nocapture
+```
+
+테스트는 재현용 로컬 응답과 임시 SQLite만 사용하며 실제 슬랙과 운영 볼륨은 사용하지 않는다.

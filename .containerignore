@@ -7,4 +7,10 @@
 !tests/
 !tests/**
 !lottery.sqlite3
+!data/
+!data/raw/
+!data/raw/lotto/
+!data/raw/lotto/all.json
+!data/raw/pension720/
+!data/raw/pension720/prizes-1-342.json
 !Containerfile

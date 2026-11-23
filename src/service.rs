@@ -65,7 +65,7 @@ impl Service {
             .context("fetch latest round")?;
         let mut local = block_in_place(|| self.store.head(game))?;
         ensure!(
-            remote.date <= seoul_date(Utc::now())?,
+            remote.date <= seoul_date(now())?,
             "source returned a future draw"
         );
         ensure!(
@@ -103,7 +103,7 @@ impl Service {
         }
         ensure!(local == remote, "latest and stored draw dates disagree");
         if let Some(candidate) = candidate(game, local, now())? {
-            if block_in_place(|| self.store.save_model_candidate(&candidate))? {
+            if block_in_place(|| self.store.save_model_candidate(&candidate, now))? {
                 tracing::info!(
                     game = game.code(),
                     round = candidate.target.round,

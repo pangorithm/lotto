@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result, anyhow, ensure};
-use chrono::{NaiveDate, SecondsFormat, Utc};
+use chrono::{DateTime, NaiveDate, SecondsFormat, Utc};
 use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior};
 use serde_json::{Map, Value, json};
 
@@ -11,14 +11,18 @@ use crate::forecast::{ALGORITHM, MAX_HISTORY, Model};
 use crate::forecast_batch::PICKS;
 
 impl Store {
-    pub(crate) fn save_model_candidate(&mut self, candidate: &Candidate) -> Result<bool> {
+    pub(crate) fn save_model_candidate(
+        &mut self,
+        candidate: &Candidate,
+        now: &impl Fn() -> DateTime<Utc>,
+    ) -> Result<bool> {
         let tx = self
             .db
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let game = candidate.game;
         let latest = read_head(&tx, game)?;
         let target = candidate.target;
-        let today = seoul_date(Utc::now())?;
+        let today = seoul_date(now())?;
         if latest != candidate.based_on
             || latest.round.checked_add(1) != Some(target.round)
             || target.date <= latest.date
@@ -55,7 +59,7 @@ impl Store {
             .picks()?
             .try_into()
             .map_err(|_| anyhow!("expected {PICKS} model tickets"))?;
-        if deadline <= seoul_date(Utc::now())? {
+        if deadline <= seoul_date(now())? {
             return Ok(false);
         }
         let alternatives = serde_json::to_string(&alternatives)?;

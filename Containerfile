@@ -5,8 +5,10 @@ COPY src/ ./src/
 RUN cargo build --release --locked
 
 FROM build AS test
-COPY schema.sql ./
+COPY schema.sql lottery.sqlite3 ./
 COPY tests/ ./tests/
+COPY data/raw/lotto/all.json ./data/raw/lotto/
+COPY data/raw/pension720/prizes-1-342.json ./data/raw/pension720/
 CMD ["cargo", "test", "--release", "--locked"]
 
 FROM docker.io/library/debian:bookworm-slim
