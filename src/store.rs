@@ -4,20 +4,25 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Result, ensure};
 use chrono::{NaiveDate, Utc};
-use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior};
-use serde_json::{Map, Value, json};
+use rusqlite::{Connection, OpenFlags, TransactionBehavior};
 use tempfile::NamedTempFile;
 
 use crate::domain::{Draw, Game, Head, Record, seoul_date};
 
+#[path = "store_forecast.rs"]
+mod forecast;
 #[path = "store_notice.rs"]
 mod notice;
+
+pub(crate) use forecast::read_history;
 
 const ARCHIVE_VERSION: i64 = 1;
 const PREDICTION_VERSION: i64 = 2;
 const RUNTIME_VERSION: i64 = 3;
+const MODEL_VERSION: i64 = 4;
+const BATCH_VERSION: i64 = 5;
 const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub(crate) struct Store {
@@ -84,43 +89,6 @@ impl Store {
         }
         tx.commit().context("commit draw batch")
     }
-
-    pub(crate) fn status(path: &Path) -> Result<Value> {
-        let mut db = connect(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
-        let tx = db.transaction()?;
-        let version = schema_version(&tx)?;
-        ensure!(
-            matches!(
-                version,
-                ARCHIVE_VERSION | PREDICTION_VERSION | RUNTIME_VERSION
-            ),
-            "unsupported database user_version {version}"
-        );
-        let today = seoul_date(Utc::now())?.to_string();
-        let mut status = Map::new();
-        for game in Game::ALL {
-            let latest = read_head(&tx, game)?;
-            let candidate = if version >= PREDICTION_VERSION {
-                let stored: Option<String> = tx.query_row(
-                    "SELECT json_object('target_round', target_round, 'target_date', target_date,
-                                        'based_on_round', based_on_round, 'created_at_utc', created_at_utc,
-                                        'algorithm', algorithm, 'ticket', json(ticket_json))
-                     FROM prediction WHERE series_code = ?1 AND based_on_round = ?2
-                       AND target_round = ?2 + 1 AND target_date > ?3 AND target_date > ?4",
-                    (game.code(), latest.round, &today, latest.date.to_string()),
-                    |row| row.get(0),
-                ).optional()?;
-                let parse = |json: String| serde_json::from_str::<Value>(&json);
-                stored.map(parse).transpose()?
-            } else {
-                None
-            };
-            let entry = json!({"latest": latest, "candidate": candidate});
-            status.insert(game.code().to_owned(), entry);
-        }
-        tx.commit()?;
-        Ok(Value::Object(status))
-    }
 }
 
 fn connect(path: &Path, access: OpenFlags) -> Result<Connection> {
@@ -155,20 +123,28 @@ fn initialize(path: &Path, seed: &Path) -> Result<()> {
 }
 
 fn schema_version(db: &Connection) -> Result<i64> {
-    db.pragma_query_value(None, "user_version", |row| row.get(0))
-        .context("read database user_version")
+    let version = db
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .context("read database user_version")?;
+    ensure!(
+        (ARCHIVE_VERSION..=BATCH_VERSION).contains(&version),
+        "unsupported database user_version {version}"
+    );
+    Ok(version)
 }
 
 fn migrate(db: &mut Connection) -> Result<()> {
     let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    match schema_version(&tx)? {
-        ARCHIVE_VERSION => {
-            tx.execute_batch(include_str!("store_v2.sql"))?;
-            tx.execute_batch(include_str!("store_v3.sql"))?;
+    let version = schema_version(&tx)?;
+    for (minimum, migration) in [
+        (PREDICTION_VERSION, include_str!("store_v2.sql")),
+        (RUNTIME_VERSION, include_str!("store_v3.sql")),
+        (MODEL_VERSION, include_str!("store_v4.sql")),
+        (BATCH_VERSION, include_str!("store_v5.sql")),
+    ] {
+        if version < minimum {
+            tx.execute_batch(migration)?;
         }
-        PREDICTION_VERSION => tx.execute_batch(include_str!("store_v3.sql"))?,
-        RUNTIME_VERSION => (),
-        version => bail!("unsupported database user_version {version}"),
     }
     tx.commit().context("commit database migration")
 }

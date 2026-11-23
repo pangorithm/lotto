@@ -40,13 +40,19 @@ impl Fixture {
         db.execute_batch(include_str!("../schema.sql"))?;
         db.execute_batch("INSERT INTO series VALUES ('lotto645','Lotto','2002-12-07',NULL), ('pension720','Pension','2020-05-07',NULL);
             INSERT INTO source (id,url,publisher,title,kind,accessed_on) VALUES ('seed','https://example.org/','fixture','fixture','third_party','2020-01-01');")?;
-        for (code, date) in [("lotto645", lotto), ("pension720", pension)] {
-            db.execute("INSERT INTO draw (series_code,round_no,draw_date,source_id,source_locator) VALUES (?1,100,?2,'seed','seed')", params![code, (date - Days::days(14)).to_string()])?;
+        for round in 75..=100 {
+            for (code, date) in [("lotto645", lotto), ("pension720", pension)] {
+                db.execute("INSERT INTO draw (series_code,round_no,draw_date,source_id,source_locator) VALUES (?1,?2,?3,'seed','seed')", params![code, round, (date - Days::days(i64::from(102 - round) * 7)).to_string()])?;
+            }
+            db.execute(
+                "INSERT INTO lotto_result VALUES ('lotto645',?1,1,2,3,4,5,6,7)",
+                [round],
+            )?;
+            db.execute(
+                "INSERT INTO pension_number VALUES ('pension720',?1,'1',1,1,'000123')",
+                [round],
+            )?;
         }
-        db.execute_batch(
-            "INSERT INTO lotto_result VALUES ('lotto645',100,1,2,3,4,5,6,7);
-            INSERT INTO pension_number VALUES ('pension720',100,'1',1,1,'000123');",
-        )?;
         drop(db);
 
         let listener = TcpListener::bind("127.0.0.1:0").await?;
@@ -157,33 +163,7 @@ fn pension_rows(round: u32, date: NaiveDate) -> Vec<Value> {
     .collect()
 }
 
-fn assert_candidate(status: &Value, code: &str, date: NaiveDate) -> Result<()> {
-    let game = &status[code];
-    assert_eq!(game["latest"], json!({"round":102,"date":date.to_string()}));
-    let candidate = &game["candidate"];
-    assert_eq!(candidate["target_round"], 103);
-    assert_eq!(candidate["target_date"], (date + Days::days(7)).to_string());
-    assert_eq!(candidate["based_on_round"], 102);
-    assert_eq!(candidate["algorithm"], "uniform-v1");
-    assert!(candidate["created_at_utc"].as_str().is_some());
-    let ticket = &candidate["ticket"];
-    if code == "lotto645" {
-        let numbers = ticket["numbers"].as_array().context("Lotto numbers")?;
-        assert_eq!(numbers.len(), 6);
-        let numbers: Vec<u64> = numbers
-            .iter()
-            .map(|n| n.as_u64().context("numeric Lotto number"))
-            .collect::<Result<_>>()?;
-        assert!(
-            numbers.iter().all(|n| (1..=45).contains(n)) && numbers.windows(2).all(|p| p[0] < p[1])
-        );
-    } else {
-        assert!((1..=5).contains(&ticket["group_no"].as_u64().context("pension group")?));
-        let digits = ticket["digits"].as_str().context("pension digits")?;
-        assert!(digits.len() == 6 && digits.bytes().all(|b| b.is_ascii_digit()));
-    }
-    Ok(())
-}
+use slack::assert_candidate;
 
 #[tokio::test]
 async fn appends_both_feeds_and_preserves_candidates_on_repeat() -> Result<()> {
@@ -205,19 +185,22 @@ async fn appends_both_feeds_and_preserves_candidates_on_repeat() -> Result<()> {
     );
     let again = fixture.status().await?;
     for code in ["lotto645", "pension720"] {
-        assert_eq!(status[code]["candidate"], again[code]["candidate"]);
+        assert_eq!(
+            status[code]["model_candidate"],
+            again[code]["model_candidate"]
+        );
         let db = fixture.db()?;
         let rounds: Vec<u32> = db
             .prepare("SELECT round_no FROM draw WHERE series_code=?1 ORDER BY round_no")?
             .query_map([code], |row| row.get(0))?
             .collect::<rusqlite::Result<_>>()?;
-        assert_eq!(rounds, vec![100, 101, 102]);
+        assert_eq!(rounds, (75..=102).collect::<Vec<_>>());
         let count: u32 = db.query_row(
             "SELECT count(*) FROM prediction WHERE series_code=?1",
             [code],
             |row| row.get(0),
         )?;
-        assert_eq!(count, 1);
+        assert_eq!(count, 0);
     }
     let db = fixture.db()?;
     let digits: String = db.query_row("SELECT digits FROM pension_number WHERE series_code='pension720' AND round_no=102 AND tier='1'", [], |row| row.get(0))?;
@@ -241,7 +224,7 @@ async fn malformed_lotto_detail_preserves_head_while_pension_succeeds() -> Resul
         status["lotto645"]["latest"],
         json!({"round":100,"date":(fixture.lotto - Days::days(14)).to_string()})
     );
-    assert!(status["lotto645"]["candidate"].is_null());
+    assert!(status["lotto645"].get("candidate").is_none());
     assert_candidate(&status, "pension720", fixture.pension)?;
     let db = fixture.db()?;
     let lotto: u32 = db.query_row(
@@ -259,6 +242,6 @@ async fn malformed_lotto_detail_preserves_head_while_pension_succeeds() -> Resul
         [],
         |row| row.get(0),
     )?;
-    assert_eq!((lotto, pension, candidates), (1, 3, 0));
+    assert_eq!((lotto, pension, candidates), (26, 28, 0));
     Ok(())
 }

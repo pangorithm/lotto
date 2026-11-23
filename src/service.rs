@@ -2,11 +2,10 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, ensure};
 use chrono::{DateTime, Days, Utc};
-use rand::{Rng, seq::index};
 use tokio::task::block_in_place;
 
 use crate::collector::Collector;
-use crate::domain::{Candidate, Game, Head, Ticket, seoul_date};
+use crate::domain::{Candidate, Game, Head, seoul_date};
 use crate::slack::Slack;
 use crate::store::Store;
 
@@ -18,9 +17,13 @@ pub(crate) struct Service {
 
 impl Service {
     pub(crate) async fn poll(&mut self) -> Result<()> {
+        self.poll_with_clock(&Utc::now).await
+    }
+
+    pub(crate) async fn poll_with_clock(&mut self, now: &impl Fn() -> DateTime<Utc>) -> Result<()> {
         let mut failed = Vec::new();
         for game in Game::ALL {
-            if let Err(error) = self.poll_game(game).await {
+            if let Err(error) = self.poll_game(game, now).await {
                 tracing::warn!(game = game.code(), error = %format_args!("{error:#}"), "collection failed");
                 failed.push(game.code());
                 continue;
@@ -54,7 +57,7 @@ impl Service {
         Ok(())
     }
 
-    async fn poll_game(&mut self, game: Game) -> Result<()> {
+    async fn poll_game(&mut self, game: Game, now: &impl Fn() -> DateTime<Utc>) -> Result<()> {
         let remote = self
             .collector
             .latest(game)
@@ -99,12 +102,12 @@ impl Service {
             }
         }
         ensure!(local == remote, "latest and stored draw dates disagree");
-        if let Some(candidate) = candidate(game, local, Utc::now())? {
-            if block_in_place(|| self.store.save_candidate(&candidate))? {
+        if let Some(candidate) = candidate(game, local, now())? {
+            if block_in_place(|| self.store.save_model_candidate(&candidate))? {
                 tracing::info!(
                     game = game.code(),
                     round = candidate.target.round,
-                    "candidate stored"
+                    "experimental forecast stored"
                 );
             }
         } else {
@@ -127,26 +130,10 @@ fn candidate(game: Game, head: Head, now: DateTime<Utc>) -> Result<Option<Candid
         return Ok(None);
     }
     let round = head.round.checked_add(1).context("round overflow")?;
-    let mut rng = rand::rng();
-    let ticket = match game {
-        Game::Lotto => {
-            let mut numbers = [0; 6];
-            for (slot, value) in numbers.iter_mut().zip(index::sample(&mut rng, 45, 6)) {
-                *slot = u8::try_from(value)?.saturating_add(1);
-            }
-            numbers.sort_unstable();
-            Ticket::Lotto { numbers }
-        }
-        Game::Pension => Ticket::Pension {
-            group_no: rng.random_range(1..=5),
-            digits: format!("{:06}", rng.random_range(0..1_000_000_u32)),
-        },
-    };
     Ok(Some(Candidate {
         game,
         based_on: head,
         target: Head { round, date },
-        ticket,
         created_at: now,
     }))
 }

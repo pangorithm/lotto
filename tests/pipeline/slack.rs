@@ -9,6 +9,46 @@ use tokio::task::JoinSet;
 
 use super::{Duration, Fixture, Output, Stdio, timeout};
 
+pub(super) fn assert_candidate(status: &Value, code: &str, date: chrono::NaiveDate) -> Result<()> {
+    let game = &status[code];
+    assert_eq!(
+        game["latest"],
+        serde_json::json!({"round":102,"date":date.to_string()})
+    );
+    assert!(game.get("candidate").is_none());
+    let candidate = &game["model_candidate"];
+    assert_eq!(candidate["target_round"], 103);
+    assert_eq!(
+        candidate["target_date"],
+        (date + chrono::Duration::days(7)).to_string()
+    );
+    assert_eq!(candidate["based_on_round"], 102);
+    assert_eq!(candidate["algorithm"], "recent-bias-v1");
+    assert!(candidate["created_at_utc"].as_str().is_some());
+    let tickets = candidate["tickets"].as_array().context("model tickets")?;
+    assert_eq!(tickets.len(), 5);
+    for (index, ticket) in tickets.iter().enumerate() {
+        assert!(!tickets[..index].contains(ticket), "duplicate model ticket");
+        if code == "lotto645" {
+            let numbers = ticket["numbers"].as_array().context("Lotto numbers")?;
+            assert_eq!(numbers.len(), 6);
+            let numbers: Vec<u64> = numbers
+                .iter()
+                .map(|n| n.as_u64().context("numeric Lotto number"))
+                .collect::<Result<_>>()?;
+            assert!(
+                numbers.iter().all(|n| (1..=45).contains(n))
+                    && numbers.windows(2).all(|p| p[0] < p[1])
+            );
+        } else {
+            assert!((1..=5).contains(&ticket["group_no"].as_u64().context("pension group")?));
+            let digits = ticket["digits"].as_str().context("pension digits")?;
+            assert!(digits.len() == 6 && digits.bytes().all(|b| b.is_ascii_digit()));
+        }
+    }
+    Ok(())
+}
+
 async fn once(fixture: &Fixture) -> Result<Output> {
     let mut command = Command::new(env!("CARGO_BIN_EXE_lottery-daemon"));
     command
@@ -92,6 +132,7 @@ async fn retries_failed_slack_notice_and_never_replays_sent_notices() -> Result<
         "{}",
         String::from_utf8_lossy(&restart.stderr)
     );
+    let status = fixture.status().await?;
     let messages = messages
         .lock()
         .map_err(|_| anyhow::anyhow!("capture lock poisoned"))?;
@@ -114,9 +155,48 @@ async fn retries_failed_slack_notice_and_never_replays_sent_notices() -> Result<
             );
             let text = matching[0];
             assert!(text.contains("추첨 번호:"));
-            assert!(text.contains("이전 저장 후보 없음"));
+            assert!(!text.contains("uniform-v1"));
+            assert!(!text.contains("균등 무작위"));
             if round == 102 {
-                assert!(text.contains("다음 103회 후보"));
+                let next = text
+                    .split_once("다음 103회 예측")
+                    .context("next forecast")?
+                    .1;
+                let code = if game == "로또 6/45" {
+                    "lotto645"
+                } else {
+                    "pension720"
+                };
+                let tickets = status[code]["model_candidate"]["tickets"]
+                    .as_array()
+                    .context("model tickets")?;
+                assert_eq!(tickets.len(), 5);
+                let mut remainder = next;
+                for (index, ticket) in tickets.iter().enumerate() {
+                    let value = if code == "lotto645" {
+                        let numbers = ticket["numbers"].as_array().context("lotto numbers")?;
+                        format!(
+                            "{:?}",
+                            numbers
+                                .iter()
+                                .map(|n| n.as_u64().context("lotto number"))
+                                .collect::<Result<Vec<_>>>()?
+                        )
+                    } else {
+                        format!(
+                            "{}조 {}",
+                            ticket["group_no"].as_u64().context("pension group")?,
+                            ticket["digits"].as_str().context("pension digits")?
+                        )
+                    };
+                    let label = format!("{}. {value}", index + 1);
+                    remainder = remainder
+                        .split_once(&label)
+                        .context("ordered forecast ticket")?
+                        .1;
+                }
+            } else {
+                assert!(text.contains("이전 저장 예측 없음"));
             }
         }
     }

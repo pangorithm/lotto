@@ -84,7 +84,7 @@ pub(crate) struct Record {
     pub(crate) source_url: reqwest::Url,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(untagged)]
 pub(crate) enum Ticket {
     Lotto { numbers: [u8; 6] },
@@ -109,8 +109,8 @@ pub(crate) struct Notice {
     pub(crate) game: Game,
     pub(crate) head: Head,
     pub(crate) result: NoticeResult,
-    pub(crate) prior: Option<Ticket>,
-    pub(crate) next: Option<Ticket>,
+    pub(crate) model_prior: Vec<Ticket>,
+    pub(crate) model_next: Vec<Ticket>,
 }
 
 #[derive(Debug)]
@@ -118,7 +118,6 @@ pub(crate) struct Candidate {
     pub(crate) game: Game,
     pub(crate) based_on: Head,
     pub(crate) target: Head,
-    pub(crate) ticket: Ticket,
     pub(crate) created_at: DateTime<Utc>,
 }
 

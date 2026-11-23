@@ -1,11 +1,9 @@
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result};
 use chrono::{SecondsFormat, Utc};
-use rusqlite::{OptionalExtension, TransactionBehavior};
+use rusqlite::OptionalExtension;
 
-use super::{Store, read_head};
-use crate::domain::{Candidate, Game, Head, Notice, NoticeResult, Ticket};
-
-const ALGORITHM: &str = "uniform-v1";
+use super::{Store, forecast::decode_model_tickets};
+use crate::domain::{Game, Head, Notice, NoticeResult};
 
 impl Store {
     pub(crate) fn pending_notice(&self, game: Game) -> Result<Option<Notice>> {
@@ -14,13 +12,14 @@ impl Store {
         let code = game.code();
         let pending = tx
             .query_row(
-                "SELECT d.round_no, d.draw_date, prior.ticket_json, next.ticket_json
+                "SELECT d.round_no, d.draw_date, model_prior.ticket_json, model_prior.alternatives_json,
+                        model_next.ticket_json, model_next.alternatives_json
              FROM notice_outbox AS o
              JOIN draw AS d USING (series_code, round_no)
-             LEFT JOIN prediction AS prior ON prior.series_code = o.series_code
-                 AND prior.target_round = o.round_no
-             LEFT JOIN prediction AS next ON next.series_code = o.series_code
-                 AND next.target_round = o.round_no + 1
+             LEFT JOIN model_prediction AS model_prior ON model_prior.series_code = o.series_code
+                 AND model_prior.target_round = o.round_no
+             LEFT JOIN model_prediction AS model_next ON model_next.series_code = o.series_code
+                 AND model_next.target_round = o.round_no + 1
              WHERE o.series_code = ?1 AND o.sent_at_utc IS NULL
              ORDER BY o.round_no LIMIT 1",
                 [code],
@@ -28,13 +27,15 @@ impl Store {
                     Ok((
                         row.get(0)?,
                         row.get::<_, String>(1)?,
-                        row.get(2)?,
-                        row.get(3)?,
+                        [
+                            (row.get(2)?, row.get(3)?),
+                            (row.get(4)?, row.get(5)?),
+                        ],
                     ))
                 },
             )
             .optional()?;
-        let Some((round, date, prior, next)) = pending else {
+        let Some((round, date, [model_prior, model_next])) = pending else {
             return Ok(None);
         };
         let head = Head {
@@ -64,22 +65,18 @@ impl Store {
                 }),
             ),
         }.with_context(|| format!("read notice result for {code} round {round}"))?;
-        let ticket = |json: Option<String>| -> Result<Option<Ticket>> {
-            json.as_deref()
-                .map(serde_json::from_str)
-                .transpose()
-                .context("invalid stored notice ticket")
+        let tickets = |(first, alternatives): (Option<String>, Option<String>)| {
+            decode_model_tickets(first.as_deref(), alternatives.as_deref())
         };
-        let prior = ticket(prior)?;
-        let next = ticket(next)?;
-        tx.commit()?;
-        Ok(Some(Notice {
+        let notice = Notice {
             game,
             head,
             result,
-            prior,
-            next,
-        }))
+            model_prior: tickets(model_prior)?,
+            model_next: tickets(model_next)?,
+        };
+        tx.commit()?;
+        Ok(Some(notice))
     }
 
     pub(crate) fn mark_notice_sent(&mut self, game: Game, round: u32) -> Result<()> {
@@ -92,43 +89,6 @@ impl Store {
         )?;
         Ok(())
     }
-
-    pub(crate) fn save_candidate(&mut self, candidate: &Candidate) -> Result<bool> {
-        let db = &mut self.db;
-        let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let latest = read_head(&tx, candidate.game)?;
-        let target = candidate.target;
-        // The head is the greatest stored round, so its successor has no draw in this transaction.
-        if latest != candidate.based_on
-            || latest.round.checked_add(1) != Some(target.round)
-            || target.date <= latest.date
-        {
-            return Ok(false);
-        }
-        let ticket_game = match &candidate.ticket {
-            Ticket::Lotto { .. } => Game::Lotto,
-            Ticket::Pension { .. } => Game::Pension,
-        };
-        ensure!(ticket_game == candidate.game, "ticket game mismatch");
-        let created_at = candidate.created_at;
-        let inserted = tx.execute(
-            "INSERT INTO prediction (series_code, target_round, target_date, based_on_round,
-                                     created_at_utc, algorithm, ticket_json)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-             ON CONFLICT (series_code, target_round) DO NOTHING",
-            (
-                candidate.game.code(),
-                target.round,
-                target.date.to_string(),
-                latest.round,
-                created_at.to_rfc3339_opts(SecondsFormat::AutoSi, true),
-                ALGORITHM,
-                serde_json::to_string(&candidate.ticket)?,
-            ),
-        )?;
-        tx.commit().context("commit candidate")?;
-        Ok(inserted == 1)
-    }
 }
 
 #[cfg(test)]
@@ -137,7 +97,7 @@ pub(super) mod tests {
     use rusqlite::Connection;
     use tempfile::NamedTempFile;
 
-    use super::{Candidate, Context, Game, Head, NoticeResult, Result, Store, Ticket, Utc};
+    use super::{Context, Game, Head, NoticeResult, Result, Store};
     use crate::domain::{Draw, LottoDraw, LottoPrize, Record};
 
     pub(in crate::store) fn archive() -> Result<NamedTempFile> {
@@ -177,32 +137,6 @@ pub(super) mod tests {
     }
 
     #[test]
-    fn status_and_migration_preserve_archive_and_v2_predictions() -> Result<()> {
-        use crate::store::schema_version;
-        let file = archive()?;
-        let path = file.path();
-        let db = Connection::open(path)?;
-        assert!(Store::status(path)?["lotto645"]["candidate"].is_null());
-        assert_eq!(schema_version(&db)?, 1);
-        db.execute_batch(include_str!("store_v2.sql"))?;
-        db.execute_batch(
-            r#"INSERT INTO prediction VALUES ('lotto645',2,'2099-11-28',1,'2026-11-22T00:00:00Z',
-             'uniform-v1','{"numbers":[8,9,10,11,12,13]}');"#,
-        )?;
-        let status = Store::status(path)?;
-        assert_eq!(status["lotto645"]["candidate"]["target_round"], 2);
-        assert_eq!(schema_version(&db)?, 2);
-
-        let store = Store::open(path, &path.with_extension("seed"))?;
-        assert_eq!(schema_version(&db)?, 3);
-        assert_eq!(Store::status(path)?, status);
-        for game in Game::ALL {
-            assert!(store.pending_notice(game)?.is_none());
-        }
-        Ok(())
-    }
-
-    #[test]
     fn notices_follow_draw_rounds_and_keep_the_first_sent_marker() -> Result<()> {
         let file = archive()?;
         let path = file.path();
@@ -213,21 +147,8 @@ pub(super) mod tests {
         let head = store.head(game)?;
         let first = lotto_after(head)?;
         let second = lotto_after(first.head)?;
-        let candidate = |based_on, target, numbers| Candidate {
-            game,
-            based_on,
-            target,
-            ticket: Ticket::Lotto { numbers },
-            created_at: Utc::now(),
-        };
-        let prior = candidate(head, first.head, [8, 9, 10, 11, 12, 13]);
-        assert!(store.save_candidate(&prior)?);
-        store.apply(game, std::slice::from_ref(&first))?;
-        let next = candidate(first.head, second.head, [14, 15, 16, 17, 18, 19]);
-        assert!(store.save_candidate(&next)?);
-        let first_head = first.head;
+        let (first_head, second_head) = (first.head, second.head);
         store.apply(game, &[first, second])?;
-        assert!(!store.save_candidate(&next)?);
 
         let mut store = Store::open(path, &seed)?;
         let notice = store.pending_notice(game)?.context("first notice")?;
@@ -236,12 +157,8 @@ pub(super) mod tests {
             anyhow::bail!("expected a Lotto result");
         };
         assert_eq!((numbers, bonus), ([1, 2, 3, 4, 5, 6], 7));
-        let numbers = |ticket| match ticket {
-            Some(Ticket::Lotto { numbers }) => Some(numbers),
-            Some(Ticket::Pension { .. }) | None => None,
-        };
-        assert_eq!(numbers(notice.prior), Some([8, 9, 10, 11, 12, 13]));
-        assert_eq!(numbers(notice.next), Some([14, 15, 16, 17, 18, 19]));
+        assert!(notice.model_prior.is_empty());
+        assert!(notice.model_next.is_empty());
         let sent = |db: &Connection| {
             db.query_row(
                 "SELECT sent_at_utc FROM notice_outbox WHERE series_code = ?1 AND round_no = ?2",
@@ -256,8 +173,7 @@ pub(super) mod tests {
         store.mark_notice_sent(game, first_head.round)?;
         assert_eq!(sent(&store.db)?, first_sent);
         let notice = store.pending_notice(game)?.context("second notice")?;
-        assert_eq!(notice.head, next.target);
-        assert!(notice.next.is_none());
+        assert_eq!(notice.head, second_head);
         store.mark_notice_sent(game, notice.head.round)?;
         assert!(store.pending_notice(game)?.is_none());
         Ok(())

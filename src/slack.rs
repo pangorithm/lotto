@@ -104,6 +104,37 @@ fn ticket_text(ticket: &Ticket) -> String {
     }
 }
 
+fn score_text(ticket: &Ticket, result: &NoticeResult) -> String {
+    match (ticket, result) {
+        (Ticket::Lotto { numbers: selected }, NoticeResult::Lotto { numbers, bonus }) => {
+            let (matched, bonus_match, tier) = lotto_score(selected, numbers, *bonus);
+            let tier = tier.map_or_else(|| "해당 없음".to_owned(), |value| format!("{value}등"));
+            format!("일치 번호: {matched:?} / 보너스 일치: {bonus_match} / 등위 조건: {tier}\n")
+        }
+        (
+            Ticket::Pension { group_no, digits },
+            NoticeResult::Pension {
+                group_no: drawn_group,
+                digits: drawn,
+                bonus,
+            },
+        ) => {
+            let suffix = suffix_match(digits, drawn);
+            let bonus_suffix = suffix_match(digits, bonus);
+            format!(
+                "번호 전체 일치: {} / 조 일치: {} / 끝자리 연속 일치: {suffix}자리\n보너스 번호 전체 일치 (조 무관): {} / 보너스 끝자리 연속 일치: {bonus_suffix}자리\n",
+                digits == drawn,
+                group_no == drawn_group,
+                digits == bonus
+            )
+        }
+        (Ticket::Lotto { .. }, NoticeResult::Pension { .. })
+        | (Ticket::Pension { .. }, NoticeResult::Lotto { .. }) => {
+            "이전 후보와 추첨 상품이 달라 비교할 수 없습니다.\n".to_owned()
+        }
+    }
+}
+
 fn message(notice: &Notice) -> String {
     let game = match notice.game {
         Game::Lotto => "로또 6/45",
@@ -122,45 +153,25 @@ fn message(notice: &Notice) -> String {
             "추첨 번호: {group_no}조 {digits} / 보너스 번호: {bonus}\n"
         )),
     }
-    if let Some(ticket) = &notice.prior {
-        text.push_str(&format!("이전 저장 후보: {}\n", ticket_text(ticket)));
-        match (ticket, &notice.result) {
-            (Ticket::Lotto { numbers: selected }, NoticeResult::Lotto { numbers, bonus }) => {
-                let (matched, bonus_match, tier) = lotto_score(selected, numbers, *bonus);
-                let tier =
-                    tier.map_or_else(|| "해당 없음".to_owned(), |value| format!("{value}등"));
-                text.push_str(&format!(
-                    "일치 번호: {matched:?} / 보너스 일치: {bonus_match} / 등위 조건: {tier}\n"
-                ));
-            }
-            (
-                Ticket::Pension { group_no, digits },
-                NoticeResult::Pension {
-                    group_no: drawn_group,
-                    digits: drawn,
-                    bonus,
-                },
-            ) => {
-                let suffix = suffix_match(digits, drawn);
-                let bonus_suffix = suffix_match(digits, bonus);
-                text.push_str(&format!("번호 전체 일치: {} / 조 일치: {} / 끝자리 연속 일치: {suffix}자리\n보너스 번호 전체 일치 (조 무관): {} / 보너스 끝자리 연속 일치: {bonus_suffix}자리\n", digits == drawn, group_no == drawn_group, digits == bonus));
-            }
-            (Ticket::Lotto { .. }, NoticeResult::Pension { .. })
-            | (Ticket::Pension { .. }, NoticeResult::Lotto { .. }) => {
-                text.push_str("이전 후보와 추첨 상품이 달라 비교할 수 없습니다.\n")
-            }
+    if notice.model_prior.is_empty() {
+        text.push_str("이전 저장 예측 없음\n");
+    } else {
+        text.push_str("저장된 예측과 실제 당첨번호 비교:\n");
+        for (i, ticket) in notice.model_prior.iter().enumerate() {
+            text.push_str(&format!("{}. {}\n", i + 1, ticket_text(ticket)));
+            text.push_str(&score_text(ticket, &notice.result));
         }
-    } else {
-        text.push_str("이전 저장 후보 없음\n");
     }
-    if let Some(ticket) = &notice.next {
-        text.push_str(&format!(
-            "다음 {}회 후보 (uniform-v1 균등 무작위): {}\n",
-            notice.head.round.saturating_add(1),
-            ticket_text(ticket)
-        ));
+    if notice.model_next.is_empty() {
+        text.push_str("다음 예측 없음\n");
     } else {
-        text.push_str("다음 후보 없음 (생성 방식: uniform-v1 균등 무작위)\n");
+        text.push_str(&format!(
+            "다음 {}회 예측 (recent-bias-v1 실험):\n",
+            notice.head.round.saturating_add(1)
+        ));
+        for (i, ticket) in notice.model_next.iter().enumerate() {
+            text.push_str(&format!("{}. {}\n", i + 1, ticket_text(ticket)));
+        }
     }
     text.push_str("저장된 후보의 번호 비교이며 구매 또는 실제 당첨을 뜻하지 않습니다.");
     text

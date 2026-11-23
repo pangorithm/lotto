@@ -1,5 +1,8 @@
+mod backtest;
 mod collector;
 mod domain;
+mod forecast;
+mod forecast_batch;
 mod service;
 mod slack;
 mod store;
@@ -64,6 +67,8 @@ enum Command {
     Once,
     #[command(about = "Read the latest stored draw and current candidate for each game as JSON")]
     Status,
+    #[command(about = "Backtest sequential predictions against a read-only historical database")]
+    Backtest,
 }
 
 #[tokio::main]
@@ -76,10 +81,16 @@ async fn main() -> Result<()> {
         .with_writer(io::stderr)
         .json()
         .init();
-    if matches!(args.command, Command::Status) {
-        let status = Store::status(&args.db)?;
-        serde_json::to_writer_pretty(io::stdout().lock(), &status)?;
-        return Ok(());
+    match args.command {
+        Command::Status => {
+            serde_json::to_writer_pretty(io::stdout().lock(), &Store::status(&args.db)?)?;
+            return Ok(());
+        }
+        Command::Backtest => {
+            serde_json::to_writer_pretty(io::stdout().lock(), &backtest::run(&args.db)?)?;
+            return Ok(());
+        }
+        Command::Run { .. } | Command::Once => {}
     }
     let collector = Collector::new(args.base_url)?;
     let slack = args
@@ -111,7 +122,7 @@ async fn main() -> Result<()> {
                 }
             }
         }
-        Command::Status => Ok(()),
+        Command::Status | Command::Backtest => Ok(()),
     }
 }
 
