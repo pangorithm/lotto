@@ -41,7 +41,7 @@ impl Service {
         Ok(())
     }
 
-    async fn deliver_notices(&mut self, game: Game) -> Result<()> {
+    pub(crate) async fn deliver_notices(&mut self, game: Game) -> Result<()> {
         let Some(slack) = &self.slack else {
             return Ok(());
         };
@@ -57,7 +57,11 @@ impl Service {
         Ok(())
     }
 
-    async fn poll_game(&mut self, game: Game, now: &impl Fn() -> DateTime<Utc>) -> Result<()> {
+    pub(crate) async fn poll_game(
+        &mut self,
+        game: Game,
+        now: &impl Fn() -> DateTime<Utc>,
+    ) -> Result<()> {
         let remote = self
             .collector
             .latest(game)

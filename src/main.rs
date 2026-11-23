@@ -4,6 +4,8 @@ mod domain;
 mod forecast;
 mod forecast_batch;
 #[cfg(test)]
+mod full_replay;
+#[cfg(test)]
 mod replay;
 #[cfg(test)]
 mod replay_feed;
